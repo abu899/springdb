@@ -1,0 +1,3 @@
+rootProject.name = 'springdb'
+include 'jdbc'
+
