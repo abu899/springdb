@@ -48,4 +48,25 @@ H2 데이터베이스의 에러코드
 
 하지만 서비스 계층에서는 특정 예외 복구를 위해 특정 에러 코드를 처리하기 위해선 데이터베이스 마다의 에러 코드를 알고 있어야한다.
 즉, 데이터베이스가 바뀌게 되면 에러코드를 모두 바꿔줘야하며 나아가 많은 수의 에러들이 존재하는데 이를 일일히 `Exception`을 만들고
-체크 예외를 런타임 에러로 변환해줘야하는 단점이 있다. 
+체크 예외를 런타임 에러로 변환해줘야하는 단점이 있다.
+
+## 스프링 예외 추상화
+
+<p align="center"><img src="./img/exception_spring_2.png" width="80%"></p>
+
+스프링은 데이터 접근 계층에 대한 여러가지 예외를 일관된 예외 계층을 제공한다. 또한 특정 기술에 의존적이지 않기 때문에,
+서비스 계층에서는 스프링에서 제공하는 예외를 사용하면 되며, 이를 스프링이 제공하는 예외로 변환하는 역할도 스프링이 제공해준다.
+
+- 스프링 데이터 접근 예외의 최상위 예외는 `DataAccessException`으로 `RuntimeException`을 상속받아 만들어져 있다
+- `DataAccessException`는 `NonTransient`와 `Transient`라는 두가지 예외로 나뉜다
+  - `Transient`는 일시적인 예외를 뜻하며, 동일한 시도를 다시 했을 경우 성공할 가능이 있는 예외이다.
+    - 예를 들어, 타임아웃이나 락과 관련된 오류의 경우 데이터베이스의 상태가 복구되거나 락이 해제되었을 때 다시 시도하면 성공이 된다.
+  - `NonTransiet`는 일시적이지 않은, 즉, 동일한 시도가 들어와도 실패하게되는 예외이다.
+    - 예를 들어, SQL 문법 오류나 데이테베이스 제약조건 위배 등이 있을 수 있다.
+
+```text
+ SQLErrorCodeSQLExceptionTranslator exTranslator = new SQLErrorCodeSQLExceptionTranslator(dataSource);
+ DataAccessException resultException = exTranslator.translate("select", sql, e);
+```
+이렇게 `SQLErrorCodeSQLExceptionTranslator`를 사용하면, 스프링이 제공하는 예외로 변환할 수 있다. 즉, 우리가 직접 일일히
+Exception 을 선언하고 런타임 예외로 변경하지 않더라도, 스프링에 정의된 error code 에 따라 변환된 예외를 사용할 수 있다. 
