@@ -102,3 +102,61 @@ JPA 기술에 의존적인 예외가 발생하게 된다. JPA 예외는 `Persist
 
 `@Repository`는 컴포넌트 스캔의 대상이 되는 것 뿐만 아니라, `예외 변환 AOP의 적용 대상`이 된다.
 즉, JPA 와 함께 사용하는 경우, 스프링은 JPA 예외 변환기를 등록하고 예외가 발생 시 예외 변환기를 통해 스프링 데이터 접근 예외로 변경 시킨다.
+
+### Spring Data JPA
+
+<p align="center"><img src="./img/data_jpa.png" width="80%"></p>
+
+- `JpaRepository` 인터페이스만 상속받으면 스프링 데이터 JPA가 프록시 기술을 사용해서 구현 클래스를 만들어준다. 그리고 만든 구현 클래스의 인스턴스를 만들어서 스프링 빈으로 등록한다.
+- 따라서 개발자는 구현 클래스 없이 인터페이스만 만들면 기본 CRUD 기능을 사용할 수 있다.
+- 스프링 데이터 JPA 가 제공하는 쿼리 메소드 기능
+  - 조회: find…By , read…By , query…By , get…By
+  - 예:) findHelloBy 처럼 ...에 식별하기 위한 내용(설명)이 들어가도 된다.
+  - COUNT: count…By 반환타입 long
+  - EXISTS: exists…By 반환타입 boolean
+  - 삭제: delete…By , remove…By 반환타입 long
+  - DISTINCT: findDistinct , findMemberDistinctBy
+  - LIMIT: findFirst3 , findFirst , findTop , findTop3
+
+```text
+public interface MemberRepository extends JpaRepository<Member, Long> {
+    List<Member> findByUsernameAndAgeGreaterThan(String username, int age);
+}
+```
+
+github 내 spring_data_jpa repo 를 확인하자!
+
+### QueryDSL(Domain Specific Language)
+
+JPA 에서 부족한 동적 쿼리 기능을 `Querydsl`을 이용해서 보완할 수 있다. 또한 쿼리를 `type-safe`하게 개발할 수 있게 지원해주기 때문에,
+쿼리를 에러없이 작성하는데 큰 도움을 준다.
+
+## 활용 방안
+
+### Spring Data JPA 와 트레이드 오프(Trade-off)
+
+<p align="center"><img src="./img/trade_off.png" width="80%"></p>
+
+<p align="center"><img src="./img/trade_off_1.png" width="80%"></p>
+
+`ItemService`에서 `ItemRepository`라는 인터페이스에 의존하기 때문에 확장성이 좋아졌지만 구조가 복잡해지는 단점이 존재한다.
+즉, ItemService 가 바로 `SpringDataJpaItemRepository`를 바로 의존하면 직관적일 수 있고, 중간에 어댑터나 위임을 위한 클래스를
+만들 필요가 없다. 이런 상황은 서로 간 `트레이드 오프(Trade-off)`가 있다고 할 수있다
+
+- DI, OCP 를 지켜 확장성을 확보하지만, 더 많은 코드를 유지해야하는 문제
+- 어탭터를 제거하고 단순한 구조를 취하지만, 확장성을 포기하는 문제
+- 즉, 구조의 안정성 vs 개발의 편리성
+
+실제 개발에서는 둘 중 하나가 정답이라고 할 수 없다. 상황에 따라 안정성이나 확장성이 중요할 때가 있고, 어떤 상황에서는 단순하게 가는게 맞는
+선택 일 수도 있다. 어설픈 추상화는 독이되며, `추상화 또한 유지보수 관점에서는 비용이 소모`된다. 추상화를 타고 올라가서 여러가지 구현체에서
+확인해야하는 비용 소모가 존재한다는 말이다. 따라서, 추상화는 추상화를 넘어설 만큼 효과가 있을 때 도입해야한다.
+
+> 구조를 단순하게 진행하다가, 추상화 요소가 다수 등장하는 시점에 리팩토링을 하는 것도 좋은 방법이다.
+
+### 복잡한 쿼리를 위한 실용적인 구조
+
+<p align="center"><img src="./img/practical.png" width="80%"></p>
+
+- ItemRepositoryV2 는 스프링 데이터 JPA 의 기능을 제공하는 리포지토리이다.
+- ItemQueryRepositoryV2 는 Querydsl 을 사용해서 복잡한 쿼리 기능을 제공하는 리포지토리이다.
+- 이렇게 둘을 분리하면 기본 CRUD 와 단순 조회는 스프링 데이터 JPA 가 담당하고, 복잡한 조회 쿼리는 Querydsl 이 담당하게 된다.
