@@ -34,6 +34,9 @@ dependencies {
 	//테스트에서 lombok 사용
 	testCompileOnly 'org.projectlombok:lombok'
 	testAnnotationProcessor 'org.projectlombok:lombok'
+
+	// MyBatis 설정
+	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:2.2.2'
 }
 
 tasks.named('test') {
