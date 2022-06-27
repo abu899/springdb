@@ -64,8 +64,6 @@ JdbcTemplate 보다 더 많은 기능을 제공하는 `SQL Mapper`이다. JdbcTe
 </select>
 ```
 
-
-
 ### MyBatis ItemMapper
 MyBatis 인터페이스를 만들며 따로 구현체를 만들어주지 않았지만 정상적으로 동작한다. 어떻게 이렇게 될까?
 
@@ -75,3 +73,32 @@ MyBatis 인터페이스를 만들며 따로 구현체를 만들어주지 않았�
 찾은 인터페이스를 `동적 프록시` 기술을 이용해 `ItemMapper`구현체를 만들어 내고 이 구현체를 빈으로 등록한다.
 
 - 즉, 매퍼 구현체로 스프링과 편리하게 연동가능하고, 추가적으로 예외 추상화도 함께 적용시켜준다.
+
+## JPA (Java Persistence API)
+
+JdbcTemplate 이나 MyBatis 같은 `SQL Mapper` 기술은 직접 SQL 을 개발자가 작성해야하지만,
+JPA 는 `ORM데이터 접근 기술`을 이용하여 JPA 가 대신 작성하고 처리해준다. 즉, 객체와 DB 간의 패러다임 불일치를 해결해준다.
+다만, JPA 단독으로만 사용시에는 동적 쿼리 작성에 어려운 점이 존재한다.
+
+- 객체를 자바 컬렉션에 저장하듯이 DB 에 저장하게 도와준다
+- ORM(Object Relational Mapping)
+  - 객체는 객체대로 설계
+  - 관계형 데이터베이스는 관계형 데이터베이스대로 설계
+  - ORM 프레임워크가 중간에서 객체와 DB 를 매핑해준다
+
+자세한 내용은 github 내 jpa_basic repo 를 보자!
+
+### JPA 예외 변환
+
+<p align="center"><img src="./img/jpa_ex.png" width="80%"></p>
+
+JPA 에서 예외가 발생하는 경우, JPA 예외가 발생한다. 왜냐면 `EntityManager`의 경우 JPA 기술이고 스프링과는 관계가 없는 기술이기에
+JPA 기술에 의존적인 예외가 발생하게 된다. JPA 예외는 `PersistenceException`과 그 하위 예외를 발생시킨다.
+기술에 의존적이지 않은 예외를 발생시키려면 스프링 예외 추상화를 사용해야되는데 이를 어떻게 변환시킬까?
+
+<p align="center"><img src="./img/jpa_ex_1.png" width="80%"></p>
+
+- @Repository
+
+`@Repository`는 컴포넌트 스캔의 대상이 되는 것 뿐만 아니라, `예외 변환 AOP의 적용 대상`이 된다.
+즉, JPA 와 함께 사용하는 경우, 스프링은 JPA 예외 변환기를 등록하고 예외가 발생 시 예외 변환기를 통해 스프링 데이터 접근 예외로 변경 시킨다.
