@@ -1,6 +1,7 @@
 package hello.springtx.propagation;
 
 import lombok.extern.slf4j.Slf4j;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -10,10 +11,14 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.UnexpectedRollbackException;
 import org.springframework.transaction.interceptor.DefaultTransactionAttribute;
 
 import javax.sql.DataSource;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Slf4j
 @SpringBootTest
@@ -101,14 +106,70 @@ public class BasicTxTest {
 
             log.info("====================내부  트랜잭션 시작==================");
             TransactionStatus inner = txManager.getTransaction(new DefaultTransactionAttribute());
-            log.info("outer.isNewTransaction = {}", inner.isNewTransaction());
+            log.info("inner.isNewTransaction = {}", inner.isNewTransaction());
             log.info("====================내부  트랜잭션 커밋==================");
             txManager.commit(inner);
 
             log.info("====================외부  트랜잭션 커밋==================");
             txManager.commit(outer);
         }
+
+        @Test
+        @DisplayName("외부 rollback, 내부 commit")
+        void outer_rollback() {
+            log.info("====================외부 트랜잭션 시작===================");
+            TransactionStatus outer = txManager.getTransaction(new DefaultTransactionAttribute());
+            log.info("outer.isNewTransaction = {}", outer.isNewTransaction());
+
+            log.info("====================내부  트랜잭션 시작==================");
+            TransactionStatus inner = txManager.getTransaction(new DefaultTransactionAttribute());
+            log.info("inner.isNewTransaction = {}", inner.isNewTransaction());
+            log.info("====================내부  트랜잭션 커밋==================");
+            txManager.commit(inner);
+
+            log.info("====================외부  트랜잭션 롤백==================");
+            txManager.rollback(outer);
+        }
+
+        @Test
+        @DisplayName("외부 commit, 내부 rollback")
+        void inner_rollback() {
+            log.info("====================외부 트랜잭션 시작===================");
+            TransactionStatus outer = txManager.getTransaction(new DefaultTransactionAttribute());
+            log.info("outer.isNewTransaction = {}", outer.isNewTransaction());
+
+            log.info("====================내부  트랜잭션 시작==================");
+            TransactionStatus inner = txManager.getTransaction(new DefaultTransactionAttribute());
+            log.info("inner.isNewTransaction = {}", inner.isNewTransaction());
+            log.info("====================내부  트랜잭션 롤백==================");
+            txManager.rollback(inner);
+
+            log.info("====================외부  트랜잭션 커밋==================");
+            assertThatThrownBy(()->txManager.commit(outer)).isInstanceOf(UnexpectedRollbackException.class);
+        }
     }
 
+    @Nested
+    @DisplayName("다른 트랜잭션 옵션을 사용하는 테스트")
+    class DifferentPropagationOptionTest {
+        @Test
+        @DisplayName("REQUIRES NEW")
+        void requires_new_commit() {
+            log.info("====================외부 트랜잭션 시작===================");
+            TransactionStatus outer = txManager.getTransaction(new DefaultTransactionAttribute());
+            log.info("outer.isNewTransaction = {}", outer.isNewTransaction());
+
+            log.info("====================내부  트랜잭션 시작==================");
+            DefaultTransactionAttribute definition = new DefaultTransactionAttribute();
+            definition.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+            TransactionStatus inner = txManager.getTransaction(definition);
+            log.info("inner.isNewTransaction = {}", inner.isNewTransaction());
+            log.info("====================내부  트랜잭션 롤백==================");
+            txManager.rollback(inner);
+
+            log.info("====================외부  트랜잭션 커밋==================");
+            txManager.commit(outer);
+        }
+    }
 
 }
